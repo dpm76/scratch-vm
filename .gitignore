@@ -1,9 +1,12 @@
+*.orig
+
 # Mac OS
 .DS_Store
 
 # NPM
 /node_modules
 npm-*
+yarn.lock
 
 # Testing
 /.nyc_output
