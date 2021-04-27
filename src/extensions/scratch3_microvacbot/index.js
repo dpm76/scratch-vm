@@ -5,7 +5,7 @@ const log = require('../../util/log');
 const RobotController = require('./robot-controller');
 
 // Time to send messages
-const sendTime = 100;
+const sendTime = 100; //ms
 const turnWaitTime = 3000; //ms
 const goToWaitTime = 200; //ms/unit
 
@@ -208,6 +208,17 @@ class Scratch3Microvacbot {
                             defaultValue: 0,
                         }
                     }
+                },
+                {
+                    opcode: 'wait',
+                    blockType: BlockType.COMMAND,
+                    text: "wait [SECONDS] seconds",
+                    arguments: {
+                        SECONDS: {
+                            type: ArgumentType.NUMBER,
+                            defaultValue: 0
+                        }
+                    }
                 }
             ],
             menus: {
@@ -243,7 +254,6 @@ class Scratch3Microvacbot {
     
         blockAction();
         return new Promise(resolve => setTimeout(resolve, sendTime));
-    
     }
     
     _doBlockActionDuring(blockAction, duration, unit){
@@ -351,6 +361,12 @@ class Scratch3Microvacbot {
     
         let length = Cast.toNumber(args.LENGTH);
         return this._doBlockActionDuring(() => this._controller.backwardsTo(length), goToWaitTime*length, "ms");
+    }
+
+    wait(args){
+
+        let seconds = Cast.toNumber(args.SECONDS);
+        this._controller.wait(seconds);
     }
 }
 

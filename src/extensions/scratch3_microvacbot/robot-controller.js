@@ -25,6 +25,7 @@ class RobotController {
                     
                     if(xhr.status === 200) {
                         if(callback){
+                            console.log(`response: ${xhr.response}`);
                             var json = JSON.parse(xhr.responseText);
                             callback(json);
                         }
@@ -36,6 +37,7 @@ class RobotController {
             };
             
             var data = JSON.stringify({"method": command, "params": params || [], "id":0, "jsonrpc": "2.0"});
+            console.log(`POST (${this.url}): "${data}"`);
             xhr.send(data);
         } else {
             console.error("The JSON-RPC URL is not set yet!");
@@ -99,6 +101,10 @@ class RobotController {
     
     backwardsTo(length){
         this.post("backwardsTo", [length]);
+    }
+
+    wait(seconds){
+        this.post("wait", [seconds]);
     }
 };
 
