@@ -312,17 +312,18 @@ class Scratch3Microvacbot {
         
     }
     
-    _beep(freq, beepTime){
+    //_beep(freq, beepTime){
     
-        this._controller.beep(freq, beepTime);
-        return new Promise(resolve => setTimeout(resolve, beepTime));
-    }
+    //    this._controller.beep(freq, beepTime);
+    //    return new Promise(resolve => setTimeout(resolve, beepTime));
+    //}
     
     beep(args){ 
     
         let beepTime = Cast.toNumber(args.MILLISEC);
         let freq = Cast.toNumber(args.FREQ);
-        return this._beep(freq, beepTime);        
+        this._controller.beep(freq, beepTime);
+        //return this._beep(freq, beepTime);        
     }
     
     playNote(args){
@@ -333,7 +334,8 @@ class Scratch3Microvacbot {
         
         let freq = Math.round(440 * Math.pow(2, (note-57)/12));
         let beepTime = Math.round(duration + (dot? duration / 2 : 0));
-        return this._beep(freq, beepTime);
+        this._controller.beep(freq, beepTime);
+        //return this._beep(freq, beepTime);
     }
     
     turnTo(args){
@@ -363,10 +365,25 @@ class Scratch3Microvacbot {
         return this._doBlockActionDuring(() => this._controller.backwardsTo(length), goToWaitTime*length, "ms");
     }
 
-    wait(args){
+    wait(args, util){
+    
+    	if(this._controller.isFree()){
 
-        let seconds = Cast.toNumber(args.SECONDS);
-        this._controller.wait(seconds);
+			console.log("is free => taking");
+			this._controller.take();
+			
+        	let seconds = Cast.toNumber(args.SECONDS);
+        	console.log("send command");
+        	this._controller.wait(seconds);
+        	util.yield();
+        } else if (this._controller.isWaitingResponse()){
+        	util.yield();
+        }else if (!this._controller.isFree() && !this._controller.isWaitingResponse()){
+        	console.log("no free and no waiting => release");
+        	this._controller.release();
+        }else{
+        	console.log("this should not happen");
+        }
     }
 }
 
