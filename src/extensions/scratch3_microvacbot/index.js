@@ -4,16 +4,9 @@ const Cast = require('../../util/cast');
 const log = require('../../util/log');
 const RobotController = require('./robot-controller');
 
-// Time to send messages
-const sendTime = 100; //ms
-const turnWaitTime = 3000; //ms
-const goToWaitTime = 200; //ms/unit
-
 class Scratch3Microvacbot {
     
-    static get EXTENSION_ID () {
-        return 'microvacbot';
-    }
+    static get EXTENSION_ID () { return 'microvacbot'; }
     
     constructor (runtime) {
     
@@ -97,70 +90,6 @@ class Scratch3Microvacbot {
                             type: ArgumentType.NUMBER,
                             menu: 'NOTE_DOTTED_MENU',
                             defaultValue: 0
-                        }
-                    }
-                },
-                {
-                    opcode: 'forwardsDuring',
-                    blockType: BlockType.COMMAND,
-                    text: "go forwards during [DURATION] [TIME_UNIT]",
-                    arguments: {
-                        DURATION: {
-                            type: ArgumentType.NUMBER,
-                            defaultValue: 3
-                        },
-                        TIME_UNIT: {
-                            type: ArgumentType.STRING,
-                            defaultValue: "s",
-                            menu: "TIME_UNIT_MENU"
-                        }
-                    }
-                },
-                {
-                    opcode: 'backwardsDuring',
-                    blockType: BlockType.COMMAND,
-                    text: "go backwards during [DURATION] [TIME_UNIT]",
-                    arguments: {
-                        DURATION: {
-                            type: ArgumentType.NUMBER,
-                            defaultValue: 3
-                        },
-                        TIME_UNIT: {
-                            type: ArgumentType.STRING,
-                            defaultValue: "s",
-                            menu: "TIME_UNIT_MENU"
-                        }
-                    }
-                },
-                {
-                    opcode: 'turnLeftDuring',
-                    blockType: BlockType.COMMAND,
-                    text: "turn left during [DURATION] [TIME_UNIT]",
-                    arguments: {
-                        DURATION: {
-                            type: ArgumentType.NUMBER,
-                            defaultValue: 500
-                        },
-                        TIME_UNIT: {
-                            type: ArgumentType.STRING,
-                            defaultValue: "ms",
-                            menu: "TIME_UNIT_MENU"
-                        }
-                    }
-                },
-                {
-                    opcode: 'turnRightDuring',
-                    blockType: BlockType.COMMAND,
-                    text: "turn right during [DURATION] [TIME_UNIT]",
-                    arguments: {
-                        DURATION: {
-                            type: ArgumentType.NUMBER,
-                            defaultValue: 500
-                        },
-                        TIME_UNIT: {
-                            type: ArgumentType.STRING,
-                            defaultValue: "ms",
-                            menu: "TIME_UNIT_MENU"
                         }
                     }
                 },
@@ -250,65 +179,43 @@ class Scratch3Microvacbot {
         };
     }
     
-    _doBlockAction(blockAction){
+    _doBlockAction(util, blockAction){
     
-        blockAction();
-        return new Promise(resolve => setTimeout(resolve, sendTime));
-    }
-    
-    _doBlockActionDuring(blockAction, duration, unit){
-    
-        blockAction();
-        let timeout = (unit == "ms")? duration : (duration * 1000);
-        return new Promise(resolve => setTimeout(resolve, 1000 + timeout)); // 1 second more to be sure the last action is done
-    }
-    
-    forwards(){ return this._doBlockAction(() => this._controller.forwards()); }
-    
-    forwardsDuring(args){
-    
-        let duration = Cast.toNumber(args.DURATION);
-        let unit = Cast.toString(args.TIME_UNIT);
-        return this._doBlockActionDuring(() => this._controller.forwards(duration, unit), duration, unit);
+    	if(this._controller.isFree()){
+    	
+			this._controller.take();
+			blockAction();
+        	util.yield();
+        	
+        } else if (this._controller.isWaitingResponse()){
         
-    }
-    
-    backwards(){ return this._doBlockAction(() => this._controller.backwards()); }
-    
-    backwardsDuring(args){
-    
-        let duration = Cast.toNumber(args.DURATION);
-        let unit = Cast.toString(args.TIME_UNIT);
-        return this._doBlockActionDuring(() => this._controller.backwards(duration, unit), duration, unit);
+        	util.yield();
+        	
+        }else if (!this._controller.isFree() && !this._controller.isWaitingResponse()){
         
+        	this._controller.release();
+        	
+        }else{
+        
+        	console.error(`controller error state: isFree={this._controller.isFree()}; isWaitingResponse={this._controller.isWaitingResponse()}`);
+        
+        }
     }
+    
+    
+    forwards(args, util){ this._doBlockAction(util, () => this._controller.forwards()); }
+    
+    backwards(args, util){ this._doBlockAction(util, () => this._controller.backwards()); }
+    
+    stop(args, util){ this._doBlockAction(util, () => this._controller.stop()); }
 
-    stop(){ return this._doBlockAction(() => this._controller.stop()); }
-
-    turnLeft(){ return this._doBlockAction(() => this._controller.turnLeft()); }
+    turnLeft(args, util){ this._doBlockAction(util, () => this._controller.turnLeft()); }
     
-    turnLeftDuring(args){
+    turnRight(args, util){ this._doBlockAction(util, () => this._controller.turnRight()); }
     
-        let duration = Cast.toNumber(args.DURATION);
-        let unit = Cast.toString(args.TIME_UNIT);
-        return this._doBlockActionDuring(() => this._controller.turnLeft(duration, unit), duration, unit);
-        
-    }
-
-    turnRight(){ return this._doBlockAction(() => this._controller.turnRight()); }
+    displayExpression(args, util){ 
     
-    turnRightDuring(args){
-    
-        let duration = Cast.toNumber(args.DURATION);
-        let unit = Cast.toString(args.TIME_UNIT);
-        return this._doBlockActionDuring(() => this._controller.turnRight(duration, unit), duration, unit);
-        
-    }
-    
-    displayExpression(args){ 
-    
-        let idExp = Cast.toNumber(args.ID_EXP);
-        return this._doBlockAction(() => this._controller.displayExpression(idExp));
+        this._doBlockAction(util, () => this._controller.displayExpression(Cast.toNumber(args.ID_EXP)));
         
     }
     
@@ -318,15 +225,12 @@ class Scratch3Microvacbot {
     //    return new Promise(resolve => setTimeout(resolve, beepTime));
     //}
     
-    beep(args){ 
-    
-        let beepTime = Cast.toNumber(args.MILLISEC);
-        let freq = Cast.toNumber(args.FREQ);
-        this._controller.beep(freq, beepTime);
-        //return this._beep(freq, beepTime);        
+    beep(args, util){ 
+        
+        this._doBlockAction(util, () => this._controller.beep(Cast.toNumber(args.FREQ), Cast.toNumber(args.MILLISEC)) )       
     }
     
-    playNote(args){
+    playNote(args, util){
     
         let note = Cast.toNumber(args.NOTE);
         let duration = Cast.toNumber(args.DURATION);
@@ -334,56 +238,37 @@ class Scratch3Microvacbot {
         
         let freq = Math.round(440 * Math.pow(2, (note-57)/12));
         let beepTime = Math.round(duration + (dot? duration / 2 : 0));
-        this._controller.beep(freq, beepTime);
-        //return this._beep(freq, beepTime);
+
+        this._doBlockAction(util, () => this._controller.beep(freq, beepTime) ) 
     }
     
-    turnTo(args){
+    turnTo(args, util){
     
         let angle = Cast.toNumber(args.ANGLE);
         if(angle < 0){
             angle = 360 + angle;
         }
-        return this._doBlockActionDuring(() => this._controller.turnTo(angle), turnWaitTime, "ms");
+        this._doBlockAction(util, () => this._controller.turnTo(angle) );
     }
     
-    turn(args){
+    turn(args, util){
     
-        let angle = Cast.toNumber(args.ANGLE);
-        return this._doBlockActionDuring(() => this._controller.turn(angle), turnWaitTime, "ms");
+        this._doBlockAction(util, () => this._controller.turn(Cast.toNumber(args.ANGLE)) );
     }
     
-    forwardsTo(args){
+    forwardsTo(args, util){
     
-        let length = Cast.toNumber(args.LENGTH);
-        return this._doBlockActionDuring(() => this._controller.forwardsTo(length), goToWaitTime*length, "ms");
+        this._doBlockAction(util, () => this._controller.forwardsTo(Cast.toNumber(args.LENGTH)));
     }
     
-    backwardsTo(args){
+    backwardsTo(args, util){
     
-        let length = Cast.toNumber(args.LENGTH);
-        return this._doBlockActionDuring(() => this._controller.backwardsTo(length), goToWaitTime*length, "ms");
+        this._doBlockAction(util, () => this._controller.backwardsTo(Cast.toNumber(args.LENGTH)));
     }
 
     wait(args, util){
     
-    	if(this._controller.isFree()){
-
-			console.log("is free => taking");
-			this._controller.take();
-			
-        	let seconds = Cast.toNumber(args.SECONDS);
-        	console.log("send command");
-        	this._controller.wait(seconds);
-        	util.yield();
-        } else if (this._controller.isWaitingResponse()){
-        	util.yield();
-        }else if (!this._controller.isFree() && !this._controller.isWaitingResponse()){
-        	console.log("no free and no waiting => release");
-        	this._controller.release();
-        }else{
-        	console.log("this should not happen");
-        }
+    	this._doBlockAction(util, () => this._controller.wait(Cast.toNumber(args.SECONDS)));
     }
 }
 
