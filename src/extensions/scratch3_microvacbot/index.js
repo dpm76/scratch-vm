@@ -4,10 +4,17 @@ const Cast = require('../../util/cast');
 const log = require('../../util/log');
 const RobotController = require('./robot-controller');
 
+
+const ObstacleSensorMenuChoices = {
+	any: "ANY",
+	left: "LEFT",
+	right: "RIGHT"
+};
+
 class Scratch3Microvacbot {
     
     static get EXTENSION_ID () { return 'microvacbot'; }
-    
+        
     constructor (runtime) {
     
         this.runtime = runtime;
@@ -148,6 +155,23 @@ class Scratch3Microvacbot {
                             defaultValue: 0
                         }
                     }
+                },
+                {
+                	opcode: 'getDistance',
+                	blockType: BlockType.REPORTER,
+                	text: "distance"
+                },
+                {
+                	opcode: 'isObstacle',
+                	blockType: BlockType.BOOLEAN,
+                	text: "obstacle? [OBSTACLE_SENSOR]",
+                	arguments: {
+                		OBSTACLE_SENSOR: {
+                			type: ArgumentType.STRING,
+                			menu: "OBSTACLE_SENSOR_MENU",
+                			defaultValue: ObstacleSensorMenuChoices.any
+                		}
+                	}
                 }
             ],
             menus: {
@@ -174,63 +198,34 @@ class Scratch3Microvacbot {
                         { text: "seconds", value: "s" },
                         { text: "milliseconds", value: "ms" }
                     ]
+                },
+                OBSTACLE_SENSOR_MENU: {
+                	acceptReporters: true,
+                	items: [
+                		{ text: "any", value: ObstacleSensorMenuChoices.any },
+                		{ text: "left", value: ObstacleSensorMenuChoices.left },
+                		{ text: "right", value: ObstacleSensorMenuChoices.right }
+                	]
                 }
             }
         };
     }
-    
-    _doBlockAction(util, blockAction){
-    
-    	if(this._controller.isFree()){
-    	
-			this._controller.take();
-			blockAction();
-        	util.yield();
-        	
-        } else if (this._controller.isWaitingResponse()){
         
-        	util.yield();
-        	
-        }else if (!this._controller.isFree() && !this._controller.isWaitingResponse()){
-        
-        	this._controller.release();
-        	
-        }else{
-        
-        	console.error(`controller error state: isFree={this._controller.isFree()}; isWaitingResponse={this._controller.isWaitingResponse()}`);
-        
-        }
-    }
+    forwards(args){ return this._controller.forwards(); }
     
+    backwards(args){ return this._controller.backwards(); }
     
-    forwards(args, util){ this._doBlockAction(util, () => this._controller.forwards()); }
-    
-    backwards(args, util){ this._doBlockAction(util, () => this._controller.backwards()); }
-    
-    stop(args, util){ this._doBlockAction(util, () => this._controller.stop()); }
+    stop(args){ return this._controller.stop(); }
 
-    turnLeft(args, util){ this._doBlockAction(util, () => this._controller.turnLeft()); }
+    turnLeft(args){ return this._controller.turnLeft(); }
     
-    turnRight(args, util){ this._doBlockAction(util, () => this._controller.turnRight()); }
+    turnRight(args){ return this._controller.turnRight(); }
     
-    displayExpression(args, util){ 
+    displayExpression(args){ return this._controller.displayExpression(Cast.toNumber(args.ID_EXP)); }
     
-        this._doBlockAction(util, () => this._controller.displayExpression(Cast.toNumber(args.ID_EXP)));
-        
-    }
+    beep(args){ return this._controller.beep(Cast.toNumber(args.FREQ), Cast.toNumber(args.MILLISEC)); }
     
-    //_beep(freq, beepTime){
-    
-    //    this._controller.beep(freq, beepTime);
-    //    return new Promise(resolve => setTimeout(resolve, beepTime));
-    //}
-    
-    beep(args, util){ 
-        
-        this._doBlockAction(util, () => this._controller.beep(Cast.toNumber(args.FREQ), Cast.toNumber(args.MILLISEC)) )       
-    }
-    
-    playNote(args, util){
+    playNote(args){
     
         let note = Cast.toNumber(args.NOTE);
         let duration = Cast.toNumber(args.DURATION);
@@ -239,37 +234,30 @@ class Scratch3Microvacbot {
         let freq = Math.round(440 * Math.pow(2, (note-57)/12));
         let beepTime = Math.round(duration + (dot? duration / 2 : 0));
 
-        this._doBlockAction(util, () => this._controller.beep(freq, beepTime) ) 
+        return this._controller.beep(freq, beepTime);
     }
     
-    turnTo(args, util){
+    turnTo(args){
     
         let angle = Cast.toNumber(args.ANGLE);
         if(angle < 0){
             angle = 360 + angle;
         }
-        this._doBlockAction(util, () => this._controller.turnTo(angle) );
+        return this._controller.turnTo(angle);
     }
     
-    turn(args, util){
+    turn(args){ return this._controller.turn(Cast.toNumber(args.ANGLE)); }
     
-        this._doBlockAction(util, () => this._controller.turn(Cast.toNumber(args.ANGLE)) );
-    }
+    forwardsTo(args){ return this._controller.forwardsTo(Cast.toNumber(args.LENGTH)); }
     
-    forwardsTo(args, util){
-    
-        this._doBlockAction(util, () => this._controller.forwardsTo(Cast.toNumber(args.LENGTH)));
-    }
-    
-    backwardsTo(args, util){
-    
-        this._doBlockAction(util, () => this._controller.backwardsTo(Cast.toNumber(args.LENGTH)));
-    }
+    backwardsTo(args){ return this._controller.backwardsTo(Cast.toNumber(args.LENGTH)); }
 
-    wait(args, util){
+    wait(args){ return this._controller.wait(Cast.toNumber(args.SECONDS)); }
     
-    	this._doBlockAction(util, () => this._controller.wait(Cast.toNumber(args.SECONDS)));
-    }
+    getDistance(args){ return this._controller.getDistance(); }
+    
+    //TODO: 20210519 DPM - Implement optical obstacle detection on Microvacbot's controller (aka. RobotController)
+    isObstacle(arg){ return Promise.resolve(Math.random() >= 0.5); }
 }
 
 module.exports = Scratch3Microvacbot;

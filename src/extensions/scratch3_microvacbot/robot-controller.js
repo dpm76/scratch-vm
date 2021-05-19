@@ -1,8 +1,8 @@
 class RobotController {
 
     constructor() {
-		this._waitingResponse = false;
-		this._free = true;
+
+		this._lastResponse = null;
     }
 
     setJsonrpcUrl(url) {
@@ -11,46 +11,66 @@ class RobotController {
         return this;
     }
 
-    post(command, params, callback){
+    post(command, params){
 
-        if(this.url) {
-        
-        	this._waitingResponse = true;
-
-            var xhr = new XMLHttpRequest();
-            xhr.open("POST", this.url, true);
-            xhr.setRequestHeader("Content-Type", "application/json");
-            xhr.withCredentials = false;
-            
-            xhr.onreadystatechange = function () {
-                
-                if (xhr.readyState === 4){
-                    
-                    if(xhr.status === 200) {
-                    
-                        console.log(`response: '${xhr.responseText || ""}'`);
-                        if(callback){
-                            
-                            var json = JSON.parse(xhr.responseText);
-                            callback(json);
-                        }
-                    } else {
-                        
-                        console.error(xhr.statusText);
-                    }
-                    
-                    this._waitingResponse = false;
-                }
-            }.bind(this);
-            
-            var data = JSON.stringify({"method": command, "params": params || [], "id":0, "jsonrpc": "2.0"});
-            console.log(`POST (${this.url}): "${data}"`);
-            xhr.send(data);
-            
-        } else {
-            console.error("The JSON-RPC URL is not set yet!");
+        if(!this.url) {
+        	const messageError = "Microvacbot: The JSON-RPC URL is not set yet!";
+        	console.error(messageError);
+        	throw messageError;
         }
+        
+        this._waitingResponse = true;
+        this._lastResponse = null;
+
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", this.url, true);
+        xhr.setRequestHeader("Content-Type", "application/json");
+        xhr.withCredentials = false;
+        
+        xhr.onreadystatechange = function () {
+            
+            if (xhr.readyState === 4){
+                
+                if(xhr.status === 200) {
+                
+                    console.log(`response: '${xhr.responseText || ""}'`);
+                    let json = JSON.parse(xhr.responseText);
+                    this._lastResponse = json["result"];
+
+                } else {
+                    
+                    console.error(xhr.statusText);
+                }
+                
+                this._waitingResponse = false;
+            }
+        }.bind(this);
+        
+        var data = JSON.stringify({"method": command, "params": params || [], "id":0, "jsonrpc": "2.0"});
+        console.log(`POST (${this.url}): "${data}"`);
+        xhr.send(data);
+        
+ 		return new Promise((resolve, reject) => setTimeout(()=>this._checkPostDone(resolve, reject), 0));       
     }
+
+	_checkPostDone(resolve, reject){
+	
+		if (this._waitingResponse){
+			setTimeout(()=>this._checkPostDone(resolve, reject), 0);
+		}
+		else{
+			const response = this._lastResponse;
+			if(response && response["success"] == "OK"){
+				if(response["data"]){
+					resolve(response["data"]);
+				}else{
+					resolve();
+				}
+			}else{
+				reject("error on POST");
+			}
+		}
+	}
 
     _sendMotionCommand(method, timeout, unit){
     
@@ -59,11 +79,6 @@ class RobotController {
     
         this.post(method, [timeout, unit]);
     }
-    
-    isWaitingResponse(){ return this._waitingResponse; }
-    isFree(){ return this._free; }
-    take(){ this._free = false; }
-    release(){ this._free = true; }
 
     forwards(timeout, unit){
     
@@ -92,7 +107,7 @@ class RobotController {
     
     displayExpression(idExp){
     
-        this.post("displayExpression", [idExp]);
+        return this.post("displayExpression", [idExp]);
     }
     
     beep(freq, millisec){
@@ -118,6 +133,10 @@ class RobotController {
 
     wait(seconds){
         this.post("wait", [seconds]);
+    }
+    
+    getDistance(){
+    	return this.post("getDistance").then(data=>parseInt(data));
     }
 };
 
