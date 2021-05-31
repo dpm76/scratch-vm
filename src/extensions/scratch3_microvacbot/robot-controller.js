@@ -77,32 +77,32 @@ class RobotController {
         timeout = timeout || 0;
         unit = unit || "s";
     
-        this.post(method, [timeout, unit]);
+        return this.post(method, [timeout, unit]);
     }
 
     forwards(timeout, unit){
     
-        this._sendMotionCommand("forwards", timeout, unit);
+        return this._sendMotionCommand("forwards", timeout, unit);
     }
 
     turnLeft(timeout, unit){
     
-        this._sendMotionCommand("turnLeft", timeout, unit);
+        return this._sendMotionCommand("turnLeft", timeout, unit);
     }
 
     stop(){
     
-        this.post("stop");
+        return this.post("stop");
     }
     
     turnRight(timeout, unit){
     
-        this._sendMotionCommand("turnRight", timeout, unit);
+        return this._sendMotionCommand("turnRight", timeout, unit);
     }
     
     backwards(timeout, unit){
     
-        this._sendMotionCommand("backwards", timeout, unit);
+        return this._sendMotionCommand("backwards", timeout, unit);
     }
     
     displayExpression(idExp){
@@ -112,27 +112,27 @@ class RobotController {
     
     beep(freq, millisec){
  
-        this.post("beep", [freq, millisec]);        
+        return this.post("beep", [freq, millisec]);        
     }
     
     turnTo(angle){
-        this.post("turnTo", [angle, true]);
+        return this.post("turnTo", [angle, true]);
     }
     
     turn(angle){
-        this.post("turn", [angle, true]);
+        return this.post("turn", [angle, true]);
     }
     
     forwardsTo(length){
-        this.post("forwardsTo", [length]);
+        return this.post("forwardsTo", [length]);
     }
     
     backwardsTo(length){
-        this.post("backwardsTo", [length]);
+        return this.post("backwardsTo", [length]);
     }
 
     wait(seconds){
-        this.post("wait", [seconds]);
+        return this.post("wait", [seconds]);
     }
     
     getDistance(){
